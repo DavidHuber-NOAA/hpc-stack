@@ -37,8 +37,6 @@ usage() {
 
 #===============================================================================
 
-[[ $# -eq 0 ]] && usage
-
 # Defaults:
 PREFIX="$HOME/opt"
 config="${HPC_STACK_ROOT}/config/config_custom.sh"
@@ -57,6 +55,10 @@ while getopts ":p:c:h" opt; do
   esac
 done
 
+# ==============================================================================
+# Source helper functions
+source "${HPC_STACK_ROOT}/stack_helpers.sh"
+
 #===============================================================================
 
 # Source the config file
@@ -68,75 +70,141 @@ else
 fi
 
 #===============================================================================
-
+# Echo compiler and mpi information
+compilermpi_info
 compilerName=$(echo $HPC_COMPILER | cut -d/ -f1)
 compilerVersion=$(echo $HPC_COMPILER | cut -d/ -f2)
-
 mpiName=$(echo $HPC_MPI | cut -d/ -f1)
 mpiVersion=$(echo $HPC_MPI | cut -d/ -f2)
+pythonName=$(echo $HPC_PYTHON | cut -d/ -f1)
+pythonVersion=$(echo $HPC_PYTHON | cut -d/ -f2)
 
-echo "Compiler: $compilerName/$compilerVersion"
-echo "MPI: $mpiName/$mpiVersion"
-
+#===============================================================================
 # install with root permissions?
 [[ $USE_SUDO =~ [yYtT] ]] && SUDO="sudo" || SUDO=""
 
 #===============================================================================
 # Deploy directory structure for modulefiles
 
+$SUDO mkdir -p $PREFIX/modulefiles/python
 $SUDO mkdir -p $PREFIX/modulefiles/core
 $SUDO mkdir -p $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion
 $SUDO mkdir -p $PREFIX/modulefiles/mpi/$compilerName/$compilerVersion/$mpiName/$mpiVersion
 
+$SUDO mkdir -p $PREFIX/modulefiles/core/hpc-$pythonName
 $SUDO mkdir -p $PREFIX/modulefiles/core/hpc-$compilerName
-$SUDO cp $HPC_STACK_ROOT/modulefiles/core/hpc-$compilerName/hpc-$compilerName.lua \
-         $PREFIX/modulefiles/core/hpc-$compilerName/$compilerVersion.lua
-
 $SUDO mkdir -p $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion/hpc-$mpiName
-$SUDO cp $HPC_STACK_ROOT/modulefiles/compiler/compilerName/compilerVersion/hpc-$mpiName/hpc-$mpiName.lua \
-         $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion/hpc-$mpiName/$mpiVersion.lua
 
-#===============================================================================
-# Query the user if using native compiler and MPI
-echo "Are you using native compiler $compilerName [yes|YES|no|NO]: (DEFAULT: NO)  "
-read responseCompiler
-if [[ $responseCompiler =~ [yYtT] ]]; then
-  echo -e "==========================\n USING NATIVE COMPILER"
-  cd $PREFIX/modulefiles/core/hpc-$compilerName
-  $SUDO sed -i -e '/load(compiler)/d' $compilerVersion.lua
-  $SUDO sed -i -e '/prereq(compiler)/d' $compilerVersion.lua
-  [[ -f $compilerVersion.lua-e ]] && $SUDO rm -f "$compilerVersion.lua-e" # Stupid macOS does not understand -i, and creates a backup with -e (-e is the next sed option)
-  echo
-fi
-
-echo "Are you using native MPI $mpiName [yes|YES|no|NO]: (DEFAULT: NO)  "
-read responseMPI
-if [[ $responseMPI =~ [yYtT] ]]; then
-  echo -e "===========================\n USING NATIVE MPI"
-  cd $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion/hpc-$mpiName
-  $SUDO sed -i -e '/load(mpi)/d' $mpiVersion.lua
-  $SUDO sed -i -e '/prereq(mpi)/d' $mpiVersion.lua
-  [[ -f $mpiVersion.lua-e ]] && $SUDO rm -f "$mpiVersion.lua-e"
-  echo
-fi
-
-#===============================================================================
-
-# Deploy directory for stack modulefile
 $SUDO mkdir -p $PREFIX/modulefiles/stack/hpc
-$SUDO cp $HPC_STACK_ROOT/modulefiles/stack/hpc/hpc.lua \
-         $PREFIX/modulefiles/stack/hpc/$HPC_STACK_VERSION.lua
 
-# Replace #PREFIX# from template with $PREFIX,
-# sed does not like delimiter (/) to be a part of replacement string, do magic!
-cd $PREFIX/modulefiles/stack/hpc
-repl=$(echo ${PREFIX} | sed -e "s#/#\\\/#g")
-$SUDO sed -i -e "s/#HPC_OPT#/${repl}/g" $PREFIX/modulefiles/stack/hpc/$HPC_STACK_VERSION.lua
-[[ -f $HPC_STACK_VERSION.lua-e ]] && $SUDO rm -f "$HPC_STACK_VERSION.lua-e"
+#===============================================================================
+# Are the hpc-$pythonName.lua, hpc-$compilerName.lua, hpc-$mpiName.lua or hpc/stack.lua modulefiles present at $PREFIX?
+# If yes, query the user to ask to over-write
+
+if [[ -f $PREFIX/modulefiles/core/hpc-$pythonName/$pythonVersion.lua && ! $OVERWRITE =~ [yYtT] ]]; then
+  echo "WARNING: $PREFIX/modulefiles/core/hpc-$pythonName/$pythonVersion.lua exists!"
+  echo "Do you wish to over-write? [yes|YES|no|NO]: (DEFAULT: NO)  "
+  read response
+else
+  response="YES"
+fi
+[[ $response =~ [yYtT] ]] && overwritePythonModulefile=YES
+unset response
+
+if [[ -f $PREFIX/modulefiles/core/hpc-$compilerName/$compilerVersion.lua && ! $OVERWRITE =~ [yYtT]  ]]; then
+  echo "WARNING: $PREFIX/modulefiles/core/hpc-$compilerName/$compilerVersion.lua exists!"
+  echo "Do you wish to over-write? [yes|YES|no|NO]: (DEFAULT: NO)  "
+  read response
+else
+  response="YES"
+fi
+[[ $response =~ [yYtT] ]] && overwriteCompilerModulefile=YES
+unset response
+
+if [[ -f $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion/hpc-$mpiName/$mpiVersion.lua && ! $OVERWRITE =~ [yYtT] ]]; then
+  echo "WARNING: $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion/hpc-$mpiName/$mpiVersion.lua exists!"
+  echo "Do you wish to over-write? [yes|YES|no|NO]: (DEFAULT: NO)  "
+  read response
+else
+  response="YES"
+fi
+[[ $response =~ [yYtT] ]] && overwriteMPIModulefile=YES
+unset response
+
+if [[ -f $PREFIX/modulefiles/stack/hpc/$HPC_STACK_VERSION.lua && ! $OVERWRITE =~ [yYtT] ]]; then
+  echo "WARNING: $PREFIX/modulefiles/stack/hpc/$HPC_STACK_VERSION.lua exists!"
+  echo "Do you wish to over-write? [yes|YES|no|NO]: (DEFAULT: NO)  "
+  read response
+else
+  response="YES"
+fi
+[[ $response =~ [yYtT] ]] && overwriteStackModulefile=YES
+unset response
+
+#===============================================================================
+# Query the user if using native python, compiler and MPI, if overwriting (or writing for first time)
+if [[ ${overwritePythonModulefile:-} =~ [yYtT] ]]; then
+  $SUDO cp $HPC_STACK_ROOT/modulefiles/core/hpc-$pythonName/hpc-$pythonName.lua \
+           $PREFIX/modulefiles/core/hpc-$pythonName/$pythonVersion.lua
+  echo "Are you using native python '$pythonName' [yes|YES|no|NO]: (DEFAULT: NO)  "
+  read response
+  if [[ $response =~ [yYtT] ]]; then
+    echo -e "==========================\n USING NATIVE PYTHON"
+    cd $PREFIX/modulefiles/core/hpc-$pythonName
+    $SUDO sed -i -e '/load(python)/d' $pythonVersion.lua
+    $SUDO sed -i -e '/prereq(python)/d' $pythonVersion.lua
+    [[ -f $pythonVersion.lua-e ]] && $SUDO rm -f "$pythonVersion.lua-e" # Stupid macOS does not understand -i, and creates a backup with -e (-e is the next sed option)
+    echo
+  fi
+  unset response
+fi
+
+if [[ ${overwriteCompilerModulefile:-} =~ [yYtT] ]]; then
+  $SUDO cp $HPC_STACK_ROOT/modulefiles/core/hpc-$compilerName/hpc-$compilerName.lua \
+           $PREFIX/modulefiles/core/hpc-$compilerName/$compilerVersion.lua
+  echo "Are you using native compiler '$compilerName' [yes|YES|no|NO]: (DEFAULT: NO)  "
+  read response
+  if [[ $response =~ [yYtT] ]]; then
+    echo -e "==========================\n USING NATIVE COMPILER"
+    cd $PREFIX/modulefiles/core/hpc-$compilerName
+    $SUDO sed -i -e '/load(compiler)/d' $compilerVersion.lua
+    $SUDO sed -i -e '/prereq(compiler)/d' $compilerVersion.lua
+    [[ -f $compilerVersion.lua-e ]] && $SUDO rm -f "$compilerVersion.lua-e" # Stupid macOS does not understand -i, and creates a backup with -e (-e is the next sed option)
+    echo
+  fi
+  unset response
+fi
+
+if [[ ${overwriteMPIModulefile:-} =~ [yYtT] ]]; then
+  $SUDO cp $HPC_STACK_ROOT/modulefiles/compiler/compilerName/compilerVersion/hpc-$mpiName/hpc-$mpiName.lua \
+           $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion/hpc-$mpiName/$mpiVersion.lua
+  echo "Are you using native MPI '$mpiName' [yes|YES|no|NO]: (DEFAULT: NO)  "
+  read response
+  if [[ $response =~ [yYtT] ]]; then
+    echo -e "===========================\n USING NATIVE MPI"
+    cd $PREFIX/modulefiles/compiler/$compilerName/$compilerVersion/hpc-$mpiName
+    $SUDO sed -i -e '/load(mpi)/d' $mpiVersion.lua
+    $SUDO sed -i -e '/prereq(mpi)/d' $mpiVersion.lua
+    [[ -f $mpiVersion.lua-e ]] && $SUDO rm -f "$mpiVersion.lua-e"
+    echo
+  fi
+  unset response
+fi
+
+if [[ ${overwriteStackModulefile:-} =~ [yYtT] ]]; then
+  $SUDO cp $HPC_STACK_ROOT/modulefiles/stack/hpc/hpc.lua \
+           $PREFIX/modulefiles/stack/hpc/$HPC_STACK_VERSION.lua
+  # Replace #PREFIX# from template with $PREFIX,
+  # sed does not like delimiter (/) to be a part of replacement string, do magic!
+  cd $PREFIX/modulefiles/stack/hpc
+  repl=$(echo ${PREFIX} | sed -e "s#/#\\\/#g")
+  $SUDO sed -i -e "s/#HPC_OPT#/${repl}/g" $PREFIX/modulefiles/stack/hpc/$HPC_STACK_VERSION.lua
+  [[ -f $HPC_STACK_VERSION.lua-e ]] && $SUDO rm -f "$HPC_STACK_VERSION.lua-e"
+fi
 
 #===============================================================================
 
 echo "setup_modules.sh: SUCCESS!"
-echo "To proceed run: build_stack.sh -p $PREFIX -c $config -y <stack.yaml>"
+echo "To proceed run: ./build_stack.sh -p $PREFIX -c $config -y <stack.yaml>"
 
 exit 0

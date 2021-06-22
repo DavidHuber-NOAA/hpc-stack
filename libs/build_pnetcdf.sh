@@ -40,14 +40,14 @@ export FCFLAGS="$FFLAGS"
 cd ${HPC_STACK_ROOT}/${PKGDIR:-"pkg"}
 
 software=$name-$version
-url="https://parallel-netcdf.github.io/Release/$software.tar.gz"
-[[ -d $software ]] || ( $WGET $url; tar -xf $software.tar.gz )
+URL="https://parallel-netcdf.github.io/Release/$software.tar.gz"
+[[ -d $software ]] || ( $WGET $URL; tar -xf $software.tar.gz )
 [[ ${DOWNLOAD_ONLY} =~ [yYtT] ]] && exit 0
 [[ -d $software ]] && cd $software || ( echo "$software does not exist, ABORT!"; exit 1 )
 [[ -d build ]] && rm -rf build
 mkdir -p build && cd build
 
-[[ ${STACK_pnetcdf_shared} =~ [yYtT] ]] && shared_flags="--enable-shared"
+[[ ${STACK_pnetcdf_shared} =~ [yYtT] ]] && shared_flags="--enable-shared" || shared_flags=""
 
 ../configure --prefix=$prefix $shared_flags
 
@@ -56,5 +56,5 @@ VERBOSE=$MAKE_VERBOSE make -j${NTHREADS:-4}
 $SUDO make install
 
 # generate modulefile from template
-$MODULES && update_modules mpi $name $version \
-         || echo $name $version >> ${HPC_STACK_ROOT}/hpc-stack-contents.log
+$MODULES && update_modules mpi $name $version
+echo $name $version $URL >> ${HPC_STACK_ROOT}/hpc-stack-contents.log

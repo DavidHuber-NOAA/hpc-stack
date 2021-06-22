@@ -7,13 +7,13 @@
 *.swp
 *~
 *.DS_Store
-*.patch
 *.diff
 *.tar.gz
 *.zip
 *.tgz
 *.bz2
 *.log*
+nohup*
 
 # Ignore the contents of these directories
 pkg*/
