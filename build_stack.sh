@@ -139,6 +139,9 @@ build_lib zlib
 build_lib png
 build_lib szip
 build_lib jasper
+build_lib sqlite
+build_lib proj
+build_lib geos
 
 #----------------------
 # MPI-dependent
@@ -210,6 +213,11 @@ build_lib atlas
 
 build_lib esmf
 build_lib fms
+build_lib cmakemodules
+build_lib esma_cmake
+build_lib gftl_shared
+build_lib yafyaml
+build_lib mapl
 
 # ==============================================================================
 # optionally clean up

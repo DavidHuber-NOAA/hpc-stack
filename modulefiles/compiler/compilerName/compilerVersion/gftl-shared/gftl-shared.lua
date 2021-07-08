@@ -1,7 +1,7 @@
 help([[
 ]])
 
-local pkgName = myModuleName()
+local pkgName    = myModuleName()
 local pkgVersion = myModuleVersion()
 local pkgNameVer = myModuleFullName()
 
@@ -15,14 +15,10 @@ local opt = os.getenv("HPC_OPT") or os.getenv("OPT") or "/opt/modules"
 
 local base = pathJoin(opt,compNameVerD,pkgName,pkgVersion)
 
-setenv("g2_ROOT", base)
-setenv("g2_VERSION", pkgVersion)
-setenv("G2_INC4", pathJoin(base,"include_4"))
-setenv("G2_INCd", pathJoin(base,"include_d"))
-setenv("G2_LIB4", pathJoin(base,"${CMAKE_INSTALL_LIBDIR}","libg2_4.a"))
-setenv("G2_LIBd", pathJoin(base,"${CMAKE_INSTALL_LIBDIR}","libg2_d.a"))
+setenv("GFTL_SHARED_ROOT", base)
+setenv("GFTL_ROOT", base)
 
 whatis("Name: ".. pkgName)
 whatis("Version: " .. pkgVersion)
 whatis("Category: library")
-whatis("Description: " .. pkgName .. " library")
+whatis("Description: gFTL-shared provides common gFTL containers of Fortran intrinsic types")

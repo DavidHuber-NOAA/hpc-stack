@@ -296,3 +296,59 @@ atlas:
 madis:
   build: YES
   version: 4.3
+
+esma_cmake:
+  build: YES
+  repo: GEOS-ESM
+  version: v3.4.3
+
+cmakemodules:
+  build: YES
+  repo: NOAA-EMC
+  version: v1.2.0
+
+gftl_shared:
+  build: YES
+  repo: Goddard-Fortran-Ecosystem
+  version: v1.3.0
+
+yafyaml:
+  build: YES
+  repo: Goddard-Fortran-Ecosystem
+  version: v0.5.1
+
+mapl:
+  build: YES
+  repo: GEOS-ESM
+  version: v2.7.3
+
+geos:
+  build: NO
+  version: 3.8.1
+
+sqlite:
+  build: NO
+  version: 3.32.3
+
+proj:
+  build: NO
+  version: 7.1.0
+  cmake_opts: "-DENABLE_CURL=OFF -DBUILD_PROJSYNC=OFF"
+
+r2d2:
+  build: NO
+  version: 1.0.0
+  requirements: r2d2.txt
+  is_pyvenv: YES
+
+hofx:
+  build: NO
+  version: 1.0.0
+  requirements: hofx.txt
+  is_pyvenv: YES
+
+ufswm:
+  build: YES
+  version: 1.0.0
+  requirements: ufswm.txt
+  is_pyvenv: YES
